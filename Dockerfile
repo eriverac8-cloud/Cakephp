@@ -23,38 +23,20 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg && \
     docker-php-ext-install -j"$(nproc)" \
         intl gd zip pdo_mysql
 
-# Composer
+# Instalar Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-# Corregir definitivamente los módulos MPM habilitados
-RUN set -eux; \
-    a2dismod mpm_event mpm_worker mpm_prefork 2>/dev/null || true; \
-    rm -f /etc/apache2/mods-enabled/mpm_*.load \
-          /etc/apache2/mods-enabled/mpm_*.conf; \
-    for file in /etc/apache2/apache2.conf \
-                /etc/apache2/conf-enabled/*.conf \
-                /etc/apache2/sites-enabled/*.conf; do \
-        if [ -f "$file" ] && [ ! -L "$file" ]; then \
-            sed -i -E \
-                '/^[[:space:]]*LoadModule[[:space:]]+mpm_(event|worker)_module[[:space:]]/d' \
-                "$file"; \
-        fi; \
-    done; \
-    a2enmod mpm_prefork rewrite; \
-    echo "Verificando archivos MPM habilitados:"; \
-    find /etc/apache2/mods-enabled -maxdepth 1 \
-        -name 'mpm_*.load' -printf '%f\n'; \
-    test "$(find /etc/apache2/mods-enabled -maxdepth 1 \
-        -name 'mpm_*.load' | wc -l)" -eq 1; \
-    apache2ctl -t
+# Usar el MPM predeterminado de la imagen oficial
+# No activar ni desactivar manualmente módulos MPM
+RUN a2enmod rewrite
 
-# Configurar DocumentRoot de CakePHP
+# Configurar el DocumentRoot de CakePHP
 RUN sed -ri \
     "s!/var/www/html!${APACHE_DOCUMENT_ROOT}!g" \
     /etc/apache2/sites-available/000-default.conf \
     /etc/apache2/apache2.conf
 
-# Permisos para webroot
+# Permitir acceso al directorio webroot
 RUN printf '%s\n' \
     '<Directory /var/www/html/webroot>' \
     '    Options FollowSymLinks' \
@@ -63,21 +45,22 @@ RUN printf '%s\n' \
     '</Directory>' \
     >> /etc/apache2/apache2.conf
 
-# Validar configuración
+# Verificar la configuración de Apache
 RUN apache2ctl -t
 
+# Directorio de la aplicación
 WORKDIR /var/www/html
 
-# Copiar aplicación
+# Copiar el proyecto
 COPY . /var/www/html
 
-# Instalar dependencias
+# Instalar dependencias PHP
 RUN composer install \
     --no-interaction \
     --prefer-dist \
     --optimize-autoloader
 
-# Directorios de CakePHP
+# Crear directorios necesarios para CakePHP
 RUN mkdir -p \
     tmp/cache/models \
     tmp/cache/persistent \
@@ -87,10 +70,11 @@ RUN mkdir -p \
     logs \
     webroot/img/empleados \
     && chown -R www-data:www-data \
-       tmp logs webroot/img/empleados \
-    && chmod -R 775 tmp logs webroot/img/empleados
+        tmp logs webroot/img/empleados \
+    && chmod -R 775 \
+        tmp logs webroot/img/empleados
 
-# Script de inicio
+# Copiar el script de inicio
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 

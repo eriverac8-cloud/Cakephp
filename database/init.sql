@@ -2,7 +2,7 @@
 -- SCRIPT DE INICIALIZACIÓN AUTOMÁTICA EN CONTENEDOR MYSQL 8.0
 -- ============================================================================
 
-CREATE DATABASE IF NOT EXISTS sterenfix CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE IF NOT EXISTS railway CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE sterenfix;
 
 -- Asegurar usuario y permisos

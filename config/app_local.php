@@ -1,7 +1,5 @@
 <?php
-
-use Cake\Database\Connection;
-use Cake\Database\Driver\Mysql;
+declare(strict_types=1);
 
 return [
     'debug' => filter_var(
@@ -9,20 +7,16 @@ return [
         FILTER_VALIDATE_BOOLEAN
     ),
 
-    'Security' => [
-        'salt' => env('SECURITY_SALT', ''),
-    ],
-
     'Datasources' => [
         'default' => [
-            'className' => Connection::class,
-            'driver' => Mysql::class,
-            'host' => env('DB_HOST', 'localhost'),
-            'port' => (int)env('DB_PORT', 3306),
-            'username' => env('DB_USERNAME', ''),
-            'password' => env('DB_PASSWORD', ''),
-            'database' => env('DB_DATABASE', ''),
-            'url' => env('DATABASE_URL', null),
+            'className' => \Cake\Database\Connection::class,
+            'driver' => \Cake\Database\Driver\Mysql::class,
+            'persistent' => false,
+            'host' => env('MYSQLHOST', 'localhost'),
+            'port' => (int)env('MYSQLPORT', 3306),
+            'username' => env('MYSQLUSER', 'root'),
+            'password' => env('MYSQLPASSWORD', ''),
+            'database' => env('MYSQLDATABASE', 'railway'),
             'encoding' => 'utf8mb4',
             'timezone' => 'UTC',
             'cacheMetadata' => true,

@@ -1,12 +1,23 @@
 #!/bin/bash
 set -e
 
-# Configurar el puerto asignado por Railway
-if [ -n "${PORT:-}" ]; then
-    sed -i 's/^Listen .*/Listen '"$PORT"'/' /etc/apache2/ports.conf
+echo "Iniciando configuración de CakePHP para Railway..."
 
-    sed -i 's/<VirtualHost \*:.*>/<VirtualHost *:'"$PORT"'>/' \
-        /etc/apache2/sites-available/000-default.conf
+# Configurar el puerto dinámico de Railway
+if [ -n "${PORT:-}" ]; then
+    echo "Configurando Apache para escuchar en el puerto ${PORT}..."
+
+    # Actualizar el puerto de escucha
+    sed -i -E \
+        's/^[[:space:]]*Listen[[:space:]]+.*/Listen '"${PORT}"'/' \
+        /etc/apache2/ports.conf
+
+    # Actualizar el VirtualHost predeterminado
+    if [ -f /etc/apache2/sites-available/000-default.conf ]; then
+        sed -i -E \
+            's/<VirtualHost \*:[0-9]+>/<VirtualHost *:'"${PORT}"'>/' \
+            /etc/apache2/sites-available/000-default.conf
+    fi
 fi
 
 # Crear directorios necesarios para CakePHP
@@ -19,7 +30,7 @@ mkdir -p \
     /var/www/html/logs \
     /var/www/html/webroot/img/empleados
 
-# Asignar permisos
+# Asignar permisos para Apache
 chown -R www-data:www-data \
     /var/www/html/tmp \
     /var/www/html/logs \
@@ -30,18 +41,23 @@ chmod -R 775 \
     /var/www/html/logs \
     /var/www/html/webroot/img/empleados
 
-# Instalar dependencias si vendor no existe
+# Instalar dependencias solo si vendor no existe
 if [ ! -d /var/www/html/vendor ] && \
    [ -f /var/www/html/composer.json ]; then
+    echo "Instalando dependencias de Composer..."
+
     composer install \
         --no-interaction \
         --prefer-dist \
         --optimize-autoloader
 fi
 
-# Comprobar módulos MPM antes de iniciar Apache
-echo "Verificando módulos MPM de Apache..."
-apache2ctl -M 2>&1 | grep -E 'mpm_(prefork|event|worker)_module' || true
+# Verificar configuración antes de iniciar
+echo "Validando configuración de Apache..."
 
-# Iniciar Apache
+apache2ctl -t
+
+echo "Iniciando Apache..."
+
+# Ejecutar el proceso principal del contenedor
 exec "$@"

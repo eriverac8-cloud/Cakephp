@@ -12,11 +12,14 @@ return [
 
     'Datasources' => [
         'default' => [
-            'host' => env('DB_HOST', 'sterenfix_db'),
-            'port' => env('DB_PORT', '1521'),
+            'className' => 'Cake\Database\Connection',
+            'driver' => env('DB_DRIVER', 'Cake\Database\Driver\Mysql'),
+            'host' => env('DB_HOST', 'db'),
+            'port' => env('DB_PORT', '3306'),
             'username' => env('DB_USERNAME', 'sterenfix'),
             'password' => env('DB_PASSWORD', 'SterenfixPassword123#'),
-            'database' => env('DB_DATABASE', 'FREEPDB1'),
+            'database' => env('DB_DATABASE', 'sterenfix'),
+            'url' => env('DATABASE_URL', null),
         ],
     ],
 ];

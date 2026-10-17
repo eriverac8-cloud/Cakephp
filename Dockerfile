@@ -4,7 +4,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV APACHE_DOCUMENT_ROOT=/var/www/html/webroot
 ENV COMPOSER_ALLOW_SUPERUSER=1
 
-# Instalar dependencias del sistema
+# Dependencias del sistema
 RUN apt-get update && apt-get install -y \
     unzip \
     curl \
@@ -18,7 +18,7 @@ RUN apt-get update && apt-get install -y \
     default-mysql-client \
     && rm -rf /var/lib/apt/lists/*
 
-# Instalar extensiones PHP
+# Extensiones PHP necesarias para CakePHP
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg && \
     docker-php-ext-install -j"$(nproc)" \
         intl gd zip pdo_mysql
@@ -26,30 +26,29 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg && \
 # Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-# Reparar y diagnosticar los módulos MPM
+# Limpiar declaraciones MPM y activar solamente prefork
 RUN set -eux; \
-    echo "=== Configuracion original ==="; \
-    grep -RnsE '^[[:space:]]*LoadModule[[:space:]]+mpm_' \
-        /etc/apache2 || true; \
     a2dismod mpm_event mpm_worker mpm_prefork 2>/dev/null || true; \
+    find /etc/apache2 -type f \
+        ! -path '/etc/apache2/mods-available/*' \
+        -exec sed -i -E \
+        '/^[[:space:]]*LoadModule[[:space:]]+mpm_(event|worker|prefork)_module[[:space:]]+/d' \
+        {} +; \
     rm -f /etc/apache2/mods-enabled/mpm_*.load \
           /etc/apache2/mods-enabled/mpm_*.conf; \
     a2enmod mpm_prefork rewrite; \
-    echo "=== Modulos MPM habilitados ==="; \
-    find /etc/apache2/mods-enabled -maxdepth 1 \
-        -name 'mpm_*.load' -type l -printf '%p -> %l\n'; \
-    echo "=== Todas las declaraciones MPM ==="; \
+    echo "=== Declaraciones MPM activas ==="; \
     grep -RnsE '^[[:space:]]*LoadModule[[:space:]]+mpm_' \
-        /etc/apache2 || true; \
+        /etc/apache2 --exclude-dir=mods-available || true; \
     apache2ctl -t
 
-# Configurar DocumentRoot
+# Configurar DocumentRoot de CakePHP
 RUN sed -ri \
     "s!/var/www/html!${APACHE_DOCUMENT_ROOT}!g" \
     /etc/apache2/sites-available/000-default.conf \
     /etc/apache2/apache2.conf
 
-# Permitir acceso al webroot de CakePHP
+# Permisos para el directorio público
 RUN printf '%s\n' \
     '<Directory /var/www/html/webroot>' \
     '    Options FollowSymLinks' \
@@ -58,21 +57,18 @@ RUN printf '%s\n' \
     '</Directory>' \
     >> /etc/apache2/apache2.conf
 
-# Verificar Apache
-RUN apache2ctl -t
-
 WORKDIR /var/www/html
 
 # Copiar el proyecto
 COPY . /var/www/html
 
-# Instalar dependencias de CakePHP
+# Instalar dependencias PHP
 RUN composer install \
     --no-interaction \
     --prefer-dist \
     --optimize-autoloader
 
-# Preparar directorios y permisos
+# Preparar directorios de CakePHP
 RUN mkdir -p \
     tmp/cache/models \
     tmp/cache/persistent \
@@ -90,7 +86,7 @@ RUN mkdir -p \
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
-EXPOSE 80
+EXPOSE 8080
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["apache2-foreground"]

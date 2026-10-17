@@ -12,11 +12,13 @@ return [
             'className' => \Cake\Database\Connection::class,
             'driver' => \Cake\Database\Driver\Mysql::class,
             'persistent' => false,
-            'host' => env('MYSQLHOST', 'localhost'),
-            'port' => (int)env('MYSQLPORT', 3306),
-            'username' => env('MYSQLUSER', 'root'),
-            'password' => env('MYSQLPASSWORD', ''),
-            'database' => env('MYSQLDATABASE', 'railway'),
+
+            'host' => env('DB_HOST', 'localhost'),
+            'port' => (int)env('DB_PORT', 3306),
+            'username' => env('DB_USERNAME', 'root'),
+            'password' => env('DB_PASSWORD', ''),
+            'database' => env('DB_DATABASE', 'railway'),
+
             'encoding' => 'utf8mb4',
             'timezone' => 'UTC',
             'cacheMetadata' => true,

@@ -40,6 +40,15 @@ RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-av
 # Directorio de trabajo
 WORKDIR /var/www/html
 
+# Copiar el código de la aplicación
+COPY . /var/www/html
+
+# Instalar dependencias de Composer dentro del contenedor
+RUN composer install --no-interaction --prefer-dist --optimize-autoloader
+
+# Asignar permisos a www-data
+RUN chown -R www-data:www-data /var/www/html
+
 # Copiar script de arranque
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh

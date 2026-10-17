@@ -26,24 +26,21 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg && \
 # Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-# Reparar los módulos MPM de Apache
+# Reparar y diagnosticar los módulos MPM
 RUN set -eux; \
+    echo "=== Configuracion original ==="; \
+    grep -RnsE '^[[:space:]]*LoadModule[[:space:]]+mpm_' \
+        /etc/apache2 || true; \
     a2dismod mpm_event mpm_worker mpm_prefork 2>/dev/null || true; \
     rm -f /etc/apache2/mods-enabled/mpm_*.load \
           /etc/apache2/mods-enabled/mpm_*.conf; \
     a2enmod mpm_prefork rewrite; \
-    echo "=== MPM habilitados ==="; \
+    echo "=== Modulos MPM habilitados ==="; \
     find /etc/apache2/mods-enabled -maxdepth 1 \
-        -name 'mpm_*.load' -printf '%f\n'; \
-    test "$(find /etc/apache2/mods-enabled -maxdepth 1 \
-        -name 'mpm_*.load' | wc -l)" -eq 1; \
-    echo "=== Declaraciones MPM en configuracion ==="; \
-    grep -RnsE \
-        '^[[:space:]]*LoadModule[[:space:]]+mpm_(event|worker|prefork)_module' \
-        /etc/apache2/apache2.conf \
-        /etc/apache2/conf-enabled \
-        /etc/apache2/sites-enabled \
-        /etc/apache2/mods-enabled || true; \
+        -name 'mpm_*.load' -type l -printf '%p -> %l\n'; \
+    echo "=== Todas las declaraciones MPM ==="; \
+    grep -RnsE '^[[:space:]]*LoadModule[[:space:]]+mpm_' \
+        /etc/apache2 || true; \
     apache2ctl -t
 
 # Configurar DocumentRoot

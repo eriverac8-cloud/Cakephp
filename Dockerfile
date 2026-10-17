@@ -28,8 +28,9 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg && \
 # Instalar Composer desde la imagen oficial
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-# Habilitar mod_rewrite en Apache
-RUN a2enmod rewrite
+# Asegurar que solo mpm_prefork esté activo y habilitar mod_rewrite en Apache
+RUN rm -f /etc/apache2/mods-enabled/mpm_*.load /etc/apache2/mods-enabled/mpm_*.conf && \
+    a2enmod mpm_prefork rewrite
 
 # Configurar Apache DocumentRoot hacia /var/www/html/webroot
 ENV APACHE_DOCUMENT_ROOT=/var/www/html/webroot

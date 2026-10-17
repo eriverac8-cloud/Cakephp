@@ -1,6 +1,12 @@
 #!/bin/bash
 set -e
 
+# Adaptar Apache al puerto dinámico asignado por Railway / PaaS si existe
+if [ -n "$PORT" ]; then
+    sed -i "s/Listen 80/Listen $PORT/g" /etc/apache2/ports.conf
+    sed -i "s/<VirtualHost \*:80>/<VirtualHost \*:$PORT>/g" /etc/apache2/sites-available/*.conf
+fi
+
 # Crear directorios temporales, logs y uploads si no existen
 mkdir -p /var/www/html/tmp/cache/models \
          /var/www/html/tmp/cache/persistent \

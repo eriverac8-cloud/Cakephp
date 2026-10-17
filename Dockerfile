@@ -1,9 +1,9 @@
 FROM php:8.2-apache
 
-# Evitar prompts interactivos durante la instalación
+# Evitar prompts interactivos
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Instalar dependencias del sistema requeridas para extensiones PHP
+# Instalar dependencias del sistema
 RUN apt-get update && apt-get install -y \
     unzip \
     curl \
@@ -17,26 +17,44 @@ RUN apt-get update && apt-get install -y \
     default-mysql-client \
     && rm -rf /var/lib/apt/lists/*
 
-# Compilar e instalar extensiones requeridas por CakePHP y MySQL
+# Instalar extensiones PHP necesarias para CakePHP y MySQL
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg && \
-    docker-php-ext-install -j$(nproc) \
-    intl \
-    gd \
-    zip \
-    pdo_mysql
+    docker-php-ext-install -j"$(nproc)" \
+        intl \
+        gd \
+        zip \
+        pdo_mysql
 
-# Instalar Composer desde la imagen oficial
+# Instalar Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-# Asegurar que solo mpm_prefork esté activo y habilitar mod_rewrite en Apache
-RUN rm -f /etc/apache2/mods-enabled/mpm_*.load /etc/apache2/mods-enabled/mpm_*.conf && \
-    a2enmod mpm_prefork rewrite
+# Corregir los módulos MPM de Apache:
+# deshabilitar los MPM alternativos y habilitar solo prefork
+RUN a2dismod mpm_event mpm_worker 2>/dev/null || true
+RUN a2enmod mpm_prefork rewrite
 
-# Configurar Apache DocumentRoot hacia /var/www/html/webroot
+# Verificar que solo se cargue un MPM
+RUN set -eu; \
+    count="$(apache2ctl -M 2>/dev/null | grep -Ec 'mpm_(prefork|event|worker)_module' || true)"; \
+    test "$count" -eq 1
+
+# Configurar Apache para utilizar CakePHP webroot
 ENV APACHE_DOCUMENT_ROOT=/var/www/html/webroot
-RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf && \
-    sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf && \
-    echo '<Directory /var/www/html/webroot>\n    Options Indexes FollowSymLinks\n    AllowOverride All\n    Require all granted\n</Directory>' >> /etc/apache2/apache2.conf
+
+RUN sed -ri \
+    's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' \
+    /etc/apache2/sites-available/*.conf && \
+    sed -ri \
+    's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' \
+    /etc/apache2/apache2.conf \
+    /etc/apache2/conf-available/*.conf && \
+    printf '%s\n' \
+    '<Directory /var/www/html/webroot>' \
+    '    Options FollowSymLinks' \
+    '    AllowOverride All' \
+    '    Require all granted' \
+    '</Directory>' \
+    >> /etc/apache2/apache2.conf
 
 # Directorio de trabajo
 WORKDIR /var/www/html
@@ -44,17 +62,22 @@ WORKDIR /var/www/html
 # Copiar el código de la aplicación
 COPY . /var/www/html
 
-# Instalar dependencias de Composer dentro del contenedor
-RUN composer install --no-interaction --prefer-dist --optimize-autoloader
+# Instalar dependencias PHP
+RUN composer install \
+    --no-interaction \
+    --prefer-dist \
+    --optimize-autoloader
 
-# Asignar permisos a www-data
+# Asignar permisos
 RUN chown -R www-data:www-data /var/www/html
 
 # Copiar script de arranque
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
+# Puerto HTTP
 EXPOSE 80
 
+# Arranque del contenedor
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["apache2-foreground"]

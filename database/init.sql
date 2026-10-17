@@ -1,15 +1,26 @@
 -- ============================================================================
--- SCRIPT DE INICIALIZACIÓN AUTOMÁTICA EN CONTENEDOR MYSQL 8.0
+-- SCRIPT DE INICIALIZACIÓN AUTOMÁTICA - MYSQL 8.0
+-- SISTEMA DE GESTIÓN DE PERSONAL STERENFIX
 -- ============================================================================
 
-CREATE DATABASE IF NOT EXISTS railway CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE sterenfix;
+CREATE DATABASE IF NOT EXISTS railway
+    CHARACTER SET utf8mb4
+    COLLATE utf8mb4_unicode_ci;
 
--- Asegurar usuario y permisos
-CREATE USER IF NOT EXISTS 'sterenfix'@'%' IDENTIFIED BY 'SterenfixPassword123#';
-GRANT ALL PRIVILEGES ON sterenfix.* TO 'sterenfix'@'%';
+USE railway;
+
+-- Crear usuario de la aplicación
+CREATE USER IF NOT EXISTS 'sterenfix'@'%'
+    IDENTIFIED BY 'SterenfixPassword123#';
+
+-- Permisos sobre la base de datos
+GRANT ALL PRIVILEGES ON railway.* TO 'sterenfix'@'%';
+
 FLUSH PRIVILEGES;
 
--- Tablas e Índices
-SOURCE /docker-entrypoint-initdb.d/schema.sql;
-SOURCE /docker-entrypoint-initdb.d/seeds.sql;
+-- ============================================================================
+-- IMPORTANTE:
+-- Los archivos schema.sql y seeds.sql deben ejecutarse mediante el mecanismo
+-- de inicialización del contenedor MySQL, no mediante SOURCE dentro de este
+-- archivo si el entrypoint no admite esos comandos en este contexto.
+-- ============================================================================
